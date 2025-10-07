@@ -15,15 +15,15 @@ def angle_to_duty(angle):
 
 try:
     start = time.time()
-    while time.time() - start < 30:   # run for 30 seconds
+    while time.time() - start < 15:   # run for 30 seconds
         # Sweep forward
-        for ang in range(0, 181, 5):
+        for ang in range(0, 181, 2):
             pwm.ChangeDutyCycle(angle_to_duty(ang))
-            time.sleep(0.02)
+            time.sleep(0.05)
         # Sweep backward
-        for ang in range(180, -1, -5):
+        for ang in range(180, -1, -2):
             pwm.ChangeDutyCycle(angle_to_duty(ang))
-            time.sleep(0.02)
+            time.sleep(0.05)
 
     pwm.ChangeDutyCycle(0)  # stop sending pulses
 finally:

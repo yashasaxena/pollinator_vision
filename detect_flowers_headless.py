@@ -82,6 +82,13 @@ def main():
             return
 
         print("Camera opened. Starting main loop. Press 'q' to quit.")
+        # LED flicker to indicate detections have started
+        for i in range(3):
+            GPIO.output(LED_PIN, GPIO.HIGH)
+            time.sleep(0.2)
+            GPIO.output(LED_PIN, GPIO.LOW)
+            time.sleep(0.2)
+        print("LED flicker complete — detection running.")
         while True:
             ret, frame = cap.read()
             if not ret:

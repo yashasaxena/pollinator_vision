@@ -29,3 +29,7 @@ def kill_camera_processes():
     except FileNotFoundError:
         print("lsof not installed. Run: sudo apt install lsof")
     except Exception as e:
+        print(f"Error while checking camera processes: {e}")
+
+if __name__ == "__main__":
+    kill_camera_processes()

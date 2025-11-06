@@ -116,7 +116,8 @@ def main():
 
                 label = CLASSES[idx]
                 if label == TARGET_CLASS:
-                    found_target = True
+                    # found_target = True
+
                     # compute bounding box if you want to draw / log
                     box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
                     (startX, startY, endX, endY) = box.astype("int")
@@ -125,18 +126,22 @@ def main():
                     print(f"Detected {label} ({confidence:.2f}) at ({centerX}, {centerY})")
                     # we don't break so we can see if multiple matches happen; optional break here
 
-            # Manage LED without blocking the camera loop:
-            if found_target:
-                last_detection_time = time.time()
+                    GPIO.output(LED_PIN, GPIO.HIGH)
+                else:
+                    GPIO.output(LED_PIN, GPIO.LOW)
 
-            # If last detection within LED_ON_DURATION, keep LED on
-            if (time.time() - last_detection_time) <= LED_ON_DURATION:
-                GPIO.output(LED_PIN, GPIO.HIGH)
-                # optional: only print on transitions; kept simple here
-                print("LED ON")
-            else:
-                GPIO.output(LED_PIN, GPIO.LOW)
-                print("LED Off")
+            # Manage LED without blocking the camera loop:
+            # if found_target:
+            #     last_detection_time = time.time()
+
+            # # If last detection within LED_ON_DURATION, keep LED on
+            # if (time.time() - last_detection_time) <= LED_ON_DURATION:
+            #     GPIO.output(LED_PIN, GPIO.HIGH)
+            #     # optional: only print on transitions; kept simple here
+            #     print("LED ON")
+            # else:
+            #     GPIO.output(LED_PIN, GPIO.LOW)
+            #     print("LED Off")
 
             # Optional: show frame with a small overlay (uncomment if running with GUI/display)
             # cv2.imshow("MobileNet SSD Detection", frame)

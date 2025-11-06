@@ -61,8 +61,10 @@ while True:
             if confidence > 0.7 and CLASSES[idx] == 'pottedplant':
                 # Turn on the LED
                 GPIO.output(LED_PIN, GPIO.HIGH)
+                print("LED is ON")
             else:
                 GPIO.output(LED_PIN, GPIO.LOW)
+                print("LED is OFF")
             
             time.sleep(5)
 

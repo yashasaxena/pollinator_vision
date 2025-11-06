@@ -22,6 +22,8 @@ FRAME_HEIGHT = 480
 
 CONF_THRESHOLD = 0.7                  # detection confidence threshold to consider
 LED_PIN = 17                          # BCM pin
+INDICATOR_LED_PIN = 27
+SERVO_PIN = 18  # GPIO18 = physical pin 12
 LED_ON_DURATION = 5.0                 # seconds to keep LED on after detection
 TARGET_CLASS = "pottedplant"          # class that triggers LED
 
@@ -79,7 +81,13 @@ def setup_gpio():
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(LED_PIN, GPIO.OUT)
+    GPIO.setup(SERVO_PIN, GPIO.OUT)
     GPIO.output(LED_PIN, GPIO.LOW)
+    
+
+def angle_to_duty(angle):
+    # Map 0–180° to 2.5–12.5% duty cycle
+    return 2.5 + (angle / 180.0) * 10.0
 
 def load_model(prototxt_path: str, model_path: str):
     p1 = Path(prototxt_path)
@@ -141,9 +149,9 @@ def main():
         print("Camera opened. Starting main loop. Press 'q' to quit.")
         # LED flicker to indicate detections have started
         for i in range(3):
-            GPIO.output(LED_PIN, GPIO.HIGH)
+            GPIO.output(INDICATOR_LED_PIN, GPIO.HIGH)
             time.sleep(0.2)
-            GPIO.output(LED_PIN, GPIO.LOW)
+            GPIO.output(INDICATOR_LED_PIN, GPIO.LOW)
             time.sleep(0.2)
         print("LED flicker complete — detection running.")
         while True:
@@ -184,6 +192,25 @@ def main():
                     # we don't break so we can see if multiple matches happen; optional break here
 
                     GPIO.output(LED_PIN, GPIO.HIGH)
+                    pwm = GPIO.PWM(SERVO_PIN, 50)  # 50Hz frequency
+                    pwm.start(0)
+
+                    try:
+                        start = time.time()
+                        while time.time() - start < 15:   # run for 30 seconds
+                            # Sweep forward
+                            for ang in range(0, 181, 2):
+                                pwm.ChangeDutyCycle(angle_to_duty(ang))
+                                time.sleep(0.05)
+                            # Sweep backward
+                            for ang in range(180, -1, -2):
+                                pwm.ChangeDutyCycle(angle_to_duty(ang))
+                                time.sleep(0.05)
+
+                        pwm.ChangeDutyCycle(0)  # stop sending pulses
+                    finally:
+                        pwm.stop()
+                        GPIO.cleanup()
                 else:
                     GPIO.output(LED_PIN, GPIO.LOW)
 

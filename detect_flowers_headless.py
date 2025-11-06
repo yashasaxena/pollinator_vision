@@ -82,7 +82,9 @@ def setup_gpio():
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(LED_PIN, GPIO.OUT)
     GPIO.setup(SERVO_PIN, GPIO.OUT)
+    GPIO.setup(INDICATOR_LED_PIN, GPIO.OUT)
     GPIO.output(LED_PIN, GPIO.LOW)
+    GPIO.output(INDICATOR_LED_PIN, GPIO.LOW)
     
 
 def angle_to_duty(angle):

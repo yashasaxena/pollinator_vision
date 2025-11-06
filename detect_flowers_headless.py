@@ -126,8 +126,10 @@ def main():
             if (time.time() - last_detection_time) <= LED_ON_DURATION:
                 GPIO.output(LED_PIN, GPIO.HIGH)
                 # optional: only print on transitions; kept simple here
+                print("LED ON")
             else:
                 GPIO.output(LED_PIN, GPIO.LOW)
+                print("LED Off")
 
             # Optional: show frame with a small overlay (uncomment if running with GUI/display)
             # cv2.imshow("MobileNet SSD Detection", frame)

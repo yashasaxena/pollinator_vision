@@ -87,7 +87,6 @@ def setup_gpio():
     GPIO.output(LED_PIN, GPIO.LOW)
     GPIO.output(INDICATOR_LED_PIN, GPIO.LOW)
     
-
 def angle_to_duty(angle):
     # Map 0–180° to 2.5–12.5% duty cycle
     return 2.5 + (angle / 180.0) * 10.0
@@ -157,6 +156,7 @@ def main():
             GPIO.output(INDICATOR_LED_PIN, GPIO.LOW)
             time.sleep(0.2)
         print("LED flicker complete — detection running.")
+
         while True:
             ret, frame = cap.read()
             if not ret:
@@ -213,10 +213,10 @@ def main():
                         pwm.ChangeDutyCycle(0)  # stop sending pulses
                     finally:
                         pwm.stop()
-                        GPIO.cleanup()
+                        # GPIO.cleanup()
                 else:
                     GPIO.output(LED_PIN, GPIO.LOW)
-                    GPIO.cleanup()
+                    # GPIO.cleanup()
                 
             # GPIO.cleanup()
 
@@ -239,7 +239,7 @@ def main():
             # Quit with 'q'
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
-
+        GPIO.cleanup()
     except Exception as e:
         print("Exception occurred:", e)
         traceback.print_exc()

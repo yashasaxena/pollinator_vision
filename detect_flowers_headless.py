@@ -21,8 +21,8 @@ FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
 
 CONF_THRESHOLD = 0.7                  # detection confidence threshold to consider
-LED_PIN = 17                          # BCM pin
-INDICATOR_LED_PIN = 27
+LED_PIN = 17                          # BCM pin, physical pin 11
+INDICATOR_LED_PIN = 27                # physical pin 
 SERVO_PIN = 18  # GPIO18 = physical pin 12
 LED_ON_DURATION = 5.0                 # seconds to keep LED on after detection
 TARGET_CLASS = "pottedplant"          # class that triggers LED
@@ -212,9 +212,11 @@ def main():
                         pwm.ChangeDutyCycle(0)  # stop sending pulses
                     finally:
                         pwm.stop()
-                        GPIO.cleanup()
+                        
                 else:
                     GPIO.output(LED_PIN, GPIO.LOW)
+                
+            GPIO.cleanup()
 
             # Manage LED without blocking the camera loop:
             # if found_target:

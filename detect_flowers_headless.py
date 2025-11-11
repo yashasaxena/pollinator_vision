@@ -216,7 +216,7 @@ def main():
                 else:
                     GPIO.output(LED_PIN, GPIO.LOW)
                 
-            GPIO.cleanup()
+            # GPIO.cleanup()
 
             # Manage LED without blocking the camera loop:
             # if found_target:

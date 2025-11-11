@@ -177,21 +177,27 @@ def main():
                 confidence = float(detections[0, 0, i, 2])
                 if confidence < CONF_THRESHOLD:
                     continue
+                
 
                 idx = int(detections[0, 0, i, 1])
                 if idx < 0 or idx >= len(CLASSES):
                     continue
 
                 label = CLASSES[idx]
+                box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+                (startX, startY, endX, endY) = box.astype("int")
+                centerX = int((startX + endX) / 2)
+                centerY = int((startY + endY) / 2)
+                print(f"Detected {label} ({confidence:.2f}) at ({centerX}, {centerY})")
                 if label == TARGET_CLASS:
                     # found_target = True
 
                     # compute bounding box if you want to draw / log
-                    box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-                    (startX, startY, endX, endY) = box.astype("int")
-                    centerX = int((startX + endX) / 2)
-                    centerY = int((startY + endY) / 2)
-                    print(f"Detected {label} ({confidence:.2f}) at ({centerX}, {centerY})")
+                    # box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+                    # (startX, startY, endX, endY) = box.astype("int")
+                    # centerX = int((startX + endX) / 2)
+                    # centerY = int((startY + endY) / 2)
+                    # print(f"Detected {label} ({confidence:.2f}) at ({centerX}, {centerY})")
                     # we don't break so we can see if multiple matches happen; optional break here
 
                     GPIO.output(LED_PIN, GPIO.HIGH)

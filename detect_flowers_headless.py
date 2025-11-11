@@ -78,6 +78,7 @@ def reload_camera_driver():
         print(f"⚠️ Driver reload failed: {e}")
 
 def setup_gpio():
+    print("Starting GPIO setup")
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(LED_PIN, GPIO.OUT)
@@ -212,9 +213,10 @@ def main():
                         pwm.ChangeDutyCycle(0)  # stop sending pulses
                     finally:
                         pwm.stop()
-                        
+                        GPIO.cleanup()
                 else:
                     GPIO.output(LED_PIN, GPIO.LOW)
+                    GPIO.cleanup()
                 
             # GPIO.cleanup()
 

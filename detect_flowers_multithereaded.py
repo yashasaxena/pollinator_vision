@@ -19,7 +19,7 @@ VIDEO_DEVICE = 0                      # camera index
 USE_V4L2_backend = True               # set True on many Pi setups
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
-PROCESS_EVERY_N = 3
+PROCESS_EVERY_N = 10
 
 CONF_THRESHOLD = 0.7                  # detection confidence threshold to consider
 LED_PIN = 17                          # BCM pin, physical pin 11
@@ -27,7 +27,7 @@ INDICATOR_LED_PIN = 27                # BCM pin
 SERVO_PIN = 18                        # BCM pin (GPIO18 = physical pin 12)
 
 # Duration servo/LED should run when triggered
-SERVO_RUN_SECONDS = 5.0             # run for 5 seconds when triggered
+SERVO_RUN_SECONDS = 2.0             # run for 5 seconds when triggered
 
 TARGET_CLASS = "pottedplant"          # class that triggers LED+servo
 

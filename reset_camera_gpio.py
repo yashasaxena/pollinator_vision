@@ -12,6 +12,7 @@ import RPi.GPIO as GPIO
 
 # GPIO pin used by LED (update if different)
 LED_PIN = 17
+INDICATOR_LED_PIN = 27
 
 def kill_camera_processes():
     """Kill any processes holding /dev/video0."""
@@ -46,6 +47,8 @@ def reset_gpio():
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(LED_PIN, GPIO.OUT)
         GPIO.output(LED_PIN, GPIO.LOW)
+        GPIO.setup(INDICATOR_LED_PIN, GPIO.OUT)
+        GPIO.output(INDICATOR_LED_PIN, GPIO.LOW)
         GPIO.cleanup()
         print("✅ GPIO cleaned up successfully.")
     except Exception as e:

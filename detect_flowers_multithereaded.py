@@ -19,6 +19,7 @@ VIDEO_DEVICE = 0                      # camera index
 USE_V4L2_backend = True               # set True on many Pi setups
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
+PROCESS_EVERY_N = 3
 
 CONF_THRESHOLD = 0.7                  # detection confidence threshold to consider
 LED_PIN = 17                          # BCM pin, physical pin 11
@@ -26,7 +27,7 @@ INDICATOR_LED_PIN = 27                # BCM pin
 SERVO_PIN = 18                        # BCM pin (GPIO18 = physical pin 12)
 
 # Duration servo/LED should run when triggered
-SERVO_RUN_SECONDS = 15.0              # run for 15 seconds when triggered
+SERVO_RUN_SECONDS = 5.0             # run for 5 seconds when triggered
 
 TARGET_CLASS = "pottedplant"          # class that triggers LED+servo
 
@@ -210,17 +211,20 @@ def servo_worker():
                 pass
 
 def detection_worker(cap, net, classes):
-    """Continuously read frames and run detections. When TARGET_CLASS is detected,
-    set servo_event to trigger the servo_worker (non-blocking)."""
+    """Detection that only runs inference on every Nth frame to reduce CPU load."""
     process_counter = 0
     while not stop_event.is_set():
         ret, frame = cap.read()
         if not ret or frame is None:
-            # small backoff on error
-            time.sleep(0.02)
+            time.sleep(0.01)
             continue
 
-        # Resize once to model input and run DNN
+        process_counter += 1
+        if PROCESS_EVERY_N > 0 and (process_counter % PROCESS_EVERY_N) != 0:
+            # skip this frame (cheap)
+            continue
+
+        # Do inference on this frame
         h, w = frame.shape[:2]
         inp = cv2.resize(frame, (300, 300))
         blob = cv2.dnn.blobFromImage(inp, 0.007843, (300, 300), 127.5)
@@ -228,11 +232,10 @@ def detection_worker(cap, net, classes):
         try:
             detections = net.forward()
         except Exception as e:
-            # skip this frame if inference fails
             print("Inference error:", e)
             continue
 
-        # scan detections
+        # scan detections (same as before)
         for i in range(detections.shape[2]):
             conf = float(detections[0, 0, i, 2])
             if conf < CONF_THRESHOLD:
@@ -241,21 +244,15 @@ def detection_worker(cap, net, classes):
             if idx < 0 or idx >= len(classes):
                 continue
             label = classes[idx]
-            # compute box in original frame coordinates (if desired)
             box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
             (startX, startY, endX, endY) = box.astype("int")
             centerX = int((startX + endX) / 2)
             centerY = int((startY + endY) / 2)
-            # minimal logging
             print(f"Detected {label} ({conf:.2f}) at ({centerX},{centerY})")
             if label == TARGET_CLASS:
-                # non-blocking: notify servo thread; it will ignore retriggers while busy
                 servo_event.set()
-                # don't break because we may want to log other detections too
-        # option: handle key press to quit if you have GUI
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            stop_event.set()
-            break
+        # tiny sleep to yield CPU
+        time.sleep(0.001)
 
 # ---------------- Main ----------------
 def main():

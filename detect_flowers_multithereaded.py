@@ -29,7 +29,7 @@ INDICATOR_LED_PIN = 27                # BCM pin
 SERVO_PIN = 18                        # BCM pin (GPIO18 = physical pin 12)
 
 # Duration servo/LED should run when triggered
-SERVO_RUN_SECONDS = 10.0             # run for 5 seconds when triggered
+SERVO_RUN_SECONDS = 4.0             # run for 5 seconds when triggered
 
 TARGET_CLASS = "pottedplant"          # class that triggers LED+servo
 

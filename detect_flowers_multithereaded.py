@@ -159,7 +159,7 @@ def servo_worker():
 
         # turn ON indicator LED (and main LED)
         try:
-            GPIO.output(INDICATOR_LED_PIN, GPIO.HIGH)
+            # GPIO.output(INDICATOR_LED_PIN, GPIO.HIGH)
             GPIO.output(LED_PIN, GPIO.HIGH)
         except Exception:
             pass
@@ -198,7 +198,7 @@ def servo_worker():
             # turn off LEDs
             try:
                 GPIO.output(LED_PIN, GPIO.LOW)
-                GPIO.output(INDICATOR_LED_PIN, GPIO.LOW)
+                # GPIO.output(INDICATOR_LED_PIN, GPIO.LOW)
             except Exception:
                 pass
 

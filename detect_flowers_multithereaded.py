@@ -21,7 +21,6 @@ USE_V4L2_backend = True               # set True on many Pi setups
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
 PROCESS_EVERY_N = 5
-WINDOW = 6
 
 CONF_THRESHOLD = 0.6                  # detection confidence threshold to consider
 LED_PIN = 17                          # BCM pin, physical pin 11
@@ -213,16 +212,16 @@ def servo_worker():
                 pass
 
 def detection_worker(cap, net, classes):
-    """Detection that runs inference every PROCESS_EVERY_N frames,
-    remembers the last WINDOW inference results, and triggers servo_event
-    if the target was seen in any of those WINDOW results.
     """
+    Sample every PROCESS_EVERY_N frames, collect labels seen during a 1.0s window
+    (from the sampled inferences), then if TARGET_CLASS appeared in that window
+    trigger servo_event once. Repeats continuously while stop_event is not set.
+    """
+    PROCESS_WINDOW_SECONDS = 1.0  # collect detections over 1 second
     process_counter = 0
-    recent = deque(maxlen=WINDOW)  # stores booleans: True if TARGET_CLASS detected in that inference
 
-    # Pre-fill with False so early logic works predictably (optional)
-    for _ in range(WINDOW):
-        recent.append(False)
+    window_start = None
+    labels_seen = set()
 
     while not stop_event.is_set():
         ret, frame = cap.read()
@@ -231,13 +230,25 @@ def detection_worker(cap, net, classes):
             continue
 
         process_counter += 1
-        # Skip frames according to PROCESS_EVERY_N (if 0 => process every frame)
+        # Only run inference on every Nth frame (if PROCESS_EVERY_N == 0 -> run every frame)
         if PROCESS_EVERY_N > 0 and (process_counter % PROCESS_EVERY_N) != 0:
-            # Optionally still maintain a moving window of "no detection" for skipped frames:
-            # recent.append(False)   # uncomment if you want skipped frames to count as negatives
+            # still check whether the window expired even if we're skipping this frame
+            if window_start is not None and (time.time() - window_start) >= PROCESS_WINDOW_SECONDS:
+                # evaluate window
+                if TARGET_CLASS in labels_seen:
+                    servo_event.set()
+                # reset window
+                window_start = None
+                labels_seen.clear()
             continue
 
-        # Run inference for this sampled frame
+        # If we reach here, we will run inference on this sampled frame
+        now = time.time()
+        if window_start is None:
+            window_start = now
+            labels_seen.clear()
+
+        # Prepare blob and run inference
         h, w = frame.shape[:2]
         inp = cv2.resize(frame, (300, 300))
         blob = cv2.dnn.blobFromImage(inp, 0.007843, (300, 300), 127.5)
@@ -245,44 +256,36 @@ def detection_worker(cap, net, classes):
         try:
             detections = net.forward()
         except Exception as e:
-            # skip this inference on errors
+            # on error, skip this inference but keep window running
             print("Inference error:", e)
-            # record a negative to keep window moving
-            recent.append(False)
-            continue
+            # optionally you may want to append nothing and continue
+            detections = None
 
-        found_target_this_inference = False
+        # Collect labels from this inference into the set
+        if detections is not None:
+            for i in range(detections.shape[2]):
+                conf = float(detections[0, 0, i, 2])
+                if conf < CONF_THRESHOLD:
+                    continue
+                idx = int(detections[0, 0, i, 1])
+                if idx < 0 or idx >= len(classes):
+                    continue
+                label = classes[idx]
+                labels_seen.add(label)
+                # optional minimal logging (comment out to reduce overhead)
+                # print(f"Sampled detection: {label} ({conf:.2f})")
 
-        # scan detections and record whether the target class was seen
-        for i in range(detections.shape[2]):
-            conf = float(detections[0, 0, i, 2])
-            if conf < CONF_THRESHOLD:
-                continue
-            idx = int(detections[0, 0, i, 1])
-            if idx < 0 or idx >= len(classes):
-                continue
-            label = classes[idx]
-            # (optional) compute bounding box coordinates if you need them
-            # box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-            # (startX, startY, endX, endY) = box.astype("int")
-            if label == TARGET_CLASS:
-                found_target_this_inference = True
-                # Minimal logging — comment out to reduce overhead
-                print(f"Detected {label} ({conf:.2f})")
-                # do not break: we only need to know presence for this inference
-                # break
-
-        # push result into the rolling window
-        recent.append(bool(found_target_this_inference))
-
-        # If target appears anywhere in the last WINDOW inferences -> trigger servo
-        if any(recent):
-            # non-blocking: servo thread will ignore retriggers while busy
-            servo_event.set()
+        # If the 1-second window has elapsed, evaluate collected labels
+        if (time.time() - window_start) >= PROCESS_WINDOW_SECONDS:
+            if TARGET_CLASS in labels_seen:
+                servo_event.set()
+            # reset for next window
+            window_start = None
+            labels_seen.clear()
 
         # tiny yield so this loop doesn't become a tight CPU spin
         time.sleep(0.001)
-
+        
 # def detection_worker(cap, net, classes):
 #     """Detection that only runs inference on every Nth frame to reduce CPU load."""
 #     process_counter = 0

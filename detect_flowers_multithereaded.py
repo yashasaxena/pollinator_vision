@@ -281,15 +281,16 @@ def main():
         return
 
     # Flicker indicator LED quickly to show program started
-    for _ in range(3):
-        try:
-            GPIO.output(INDICATOR_LED_PIN, GPIO.HIGH)
-            time.sleep(0.15)
-            GPIO.output(INDICATOR_LED_PIN, GPIO.LOW)
-            time.sleep(0.15)
-        except Exception:
-            pass
-
+    # for _ in range(3):
+    #     try:
+    #         GPIO.output(INDICATOR_LED_PIN, GPIO.HIGH)
+    #         # time.sleep(0.15)
+    #         # GPIO.output(INDICATOR_LED_PIN, GPIO.LOW)
+    #         # time.sleep(0.15)
+    #     except Exception:
+    #         pass
+    
+    GPIO.output(INDICATOR_LED_PIN, GPIO.HIGH)
     # Start servo thread
     sv_thread = threading.Thread(target=servo_worker, daemon=True)
     sv_thread.start()
@@ -297,6 +298,8 @@ def main():
     # Start detection in its own thread (so main can wait / join or handle UI)
     det_thread = threading.Thread(target=detection_worker, args=(cap, net, CLASSES), daemon=True)
     det_thread.start()
+
+
 
     try:
         # main loop: wait until stop_event is set (threads will run)

@@ -10,6 +10,7 @@ import os
 import signal
 import subprocess
 import threading
+from collections import deque
 
 # --------------- Config ---------------
 PROTOTXT = "deploy.prototxt"
@@ -19,15 +20,16 @@ VIDEO_DEVICE = 0                      # camera index
 USE_V4L2_backend = True               # set True on many Pi setups
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
-PROCESS_EVERY_N = 10
+PROCESS_EVERY_N = 5
+WINDOW = 6
 
-CONF_THRESHOLD = 0.7                  # detection confidence threshold to consider
+CONF_THRESHOLD = 0.6                  # detection confidence threshold to consider
 LED_PIN = 17                          # BCM pin, physical pin 11
 INDICATOR_LED_PIN = 27                # BCM pin
 SERVO_PIN = 18                        # BCM pin (GPIO18 = physical pin 12)
 
 # Duration servo/LED should run when triggered
-SERVO_RUN_SECONDS = 2.0             # run for 5 seconds when triggered
+SERVO_RUN_SECONDS = 10.0             # run for 5 seconds when triggered
 
 TARGET_CLASS = "pottedplant"          # class that triggers LED+servo
 
@@ -211,8 +213,17 @@ def servo_worker():
                 pass
 
 def detection_worker(cap, net, classes):
-    """Detection that only runs inference on every Nth frame to reduce CPU load."""
+    """Detection that runs inference every PROCESS_EVERY_N frames,
+    remembers the last WINDOW inference results, and triggers servo_event
+    if the target was seen in any of those WINDOW results.
+    """
     process_counter = 0
+    recent = deque(maxlen=WINDOW)  # stores booleans: True if TARGET_CLASS detected in that inference
+
+    # Pre-fill with False so early logic works predictably (optional)
+    for _ in range(WINDOW):
+        recent.append(False)
+
     while not stop_event.is_set():
         ret, frame = cap.read()
         if not ret or frame is None:
@@ -220,11 +231,13 @@ def detection_worker(cap, net, classes):
             continue
 
         process_counter += 1
+        # Skip frames according to PROCESS_EVERY_N (if 0 => process every frame)
         if PROCESS_EVERY_N > 0 and (process_counter % PROCESS_EVERY_N) != 0:
-            # skip this frame (cheap)
+            # Optionally still maintain a moving window of "no detection" for skipped frames:
+            # recent.append(False)   # uncomment if you want skipped frames to count as negatives
             continue
 
-        # Do inference on this frame
+        # Run inference for this sampled frame
         h, w = frame.shape[:2]
         inp = cv2.resize(frame, (300, 300))
         blob = cv2.dnn.blobFromImage(inp, 0.007843, (300, 300), 127.5)
@@ -232,10 +245,15 @@ def detection_worker(cap, net, classes):
         try:
             detections = net.forward()
         except Exception as e:
+            # skip this inference on errors
             print("Inference error:", e)
+            # record a negative to keep window moving
+            recent.append(False)
             continue
 
-        # scan detections (same as before)
+        found_target_this_inference = False
+
+        # scan detections and record whether the target class was seen
         for i in range(detections.shape[2]):
             conf = float(detections[0, 0, i, 2])
             if conf < CONF_THRESHOLD:
@@ -244,15 +262,70 @@ def detection_worker(cap, net, classes):
             if idx < 0 or idx >= len(classes):
                 continue
             label = classes[idx]
-            box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-            (startX, startY, endX, endY) = box.astype("int")
-            centerX = int((startX + endX) / 2)
-            centerY = int((startY + endY) / 2)
-            print(f"Detected {label} ({conf:.2f}) at ({centerX},{centerY})")
+            # (optional) compute bounding box coordinates if you need them
+            # box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+            # (startX, startY, endX, endY) = box.astype("int")
             if label == TARGET_CLASS:
-                servo_event.set()
-        # tiny sleep to yield CPU
+                found_target_this_inference = True
+                # Minimal logging — comment out to reduce overhead
+                print(f"Detected {label} ({conf:.2f})")
+                # do not break: we only need to know presence for this inference
+                # break
+
+        # push result into the rolling window
+        recent.append(bool(found_target_this_inference))
+
+        # If target appears anywhere in the last WINDOW inferences -> trigger servo
+        if any(recent):
+            # non-blocking: servo thread will ignore retriggers while busy
+            servo_event.set()
+
+        # tiny yield so this loop doesn't become a tight CPU spin
         time.sleep(0.001)
+
+# def detection_worker(cap, net, classes):
+#     """Detection that only runs inference on every Nth frame to reduce CPU load."""
+#     process_counter = 0
+#     while not stop_event.is_set():
+#         ret, frame = cap.read()
+#         if not ret or frame is None:
+#             time.sleep(0.01)
+#             continue
+
+#         process_counter += 1
+#         if PROCESS_EVERY_N > 0 and (process_counter % PROCESS_EVERY_N) != 0:
+#             # skip this frame (cheap)
+#             continue
+
+#         # Do inference on this frame
+#         h, w = frame.shape[:2]
+#         inp = cv2.resize(frame, (300, 300))
+#         blob = cv2.dnn.blobFromImage(inp, 0.007843, (300, 300), 127.5)
+#         net.setInput(blob)
+#         try:
+#             detections = net.forward()
+#         except Exception as e:
+#             print("Inference error:", e)
+#             continue
+
+#         # scan detections (same as before)
+#         for i in range(detections.shape[2]):
+#             conf = float(detections[0, 0, i, 2])
+#             if conf < CONF_THRESHOLD:
+#                 continue
+#             idx = int(detections[0, 0, i, 1])
+#             if idx < 0 or idx >= len(classes):
+#                 continue
+#             label = classes[idx]
+#             box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+#             (startX, startY, endX, endY) = box.astype("int")
+#             centerX = int((startX + endX) / 2)
+#             centerY = int((startY + endY) / 2)
+#             print(f"Detected {label} ({conf:.2f}) at ({centerX},{centerY})")
+#             if label == TARGET_CLASS:
+#                 servo_event.set()
+#         # tiny sleep to yield CPU
+#         time.sleep(0.001)
 
 # ---------------- Main ----------------
 def main():

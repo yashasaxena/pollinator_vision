@@ -1,18 +1,23 @@
-import board
-import pwmio
-from adafruit_motor import servo
+import serial
 import time
 
-pwm = pwmio.PWMOut(board.GP5, duty_cycle=2**15, frequency=50)
+# Make sure this matches your device
+ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
+time.sleep(2)  # wait for KB2040 to initialize
 
-my_servo = servo.Servo(pwm)
+def move_servo(angle):
+    ser.write(f"{angle}\n".encode())  # send angle
+    time.sleep(0.1)
+    if ser.in_waiting:
+        print(ser.readline().decode().strip())  # read KB2040 response
 
-while True:
-    my_servo.angle = 0
-    time.sleep(1)
+# Test sweep
+try:
+    while True:
+        for angle in [0, 45, 90, 135, 180]:
+            print(f"Moving to {angle}")
+            move_servo(angle)
+            time.sleep(1)
 
-    my_servo.angle = 90
-    time.sleep(1)
-
-    my_servo.angle = 180
-    time.sleep(1)
+except KeyboardInterrupt:
+    ser.close()

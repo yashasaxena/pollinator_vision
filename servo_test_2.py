@@ -1,5 +1,8 @@
 from gpiozero import Servo
 from time import sleep
+import subprocess
+import os
+import subprocess
 
 servo = Servo(18, min_pulse_width=0.45/1000, max_pulse_width=2.45/1000)
 
@@ -13,5 +16,3 @@ try:
         sleep(1)
 except KeyboardInterrupt:
     servo.close()
-
-

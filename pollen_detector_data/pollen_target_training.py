@@ -65,27 +65,27 @@ val_loader = DataLoader(
 model = ssdlite320_mobilenet_v3_large(weights=None, num_classes=4) 
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-# model.to(device)
-# optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
-
-# # 4. Training Loop
-# print("Starting Training...")
-# for epoch in range(200): # Adjust epochs as needed
-#     model.train()
-#     for images, targets in train_loader:
-#         images = [img.to(device) for img in images]
-#         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
-        
-#         loss_dict = model(images, targets)
-#         losses = sum(loss for loss in loss_dict.values())
-        
-#         optimizer.zero_grad()
-#         losses.backward()
-#         optimizer.step()
-#     print(f"Epoch {epoch} Loss: {losses.item():.4f}")
-
-model.load_state_dict(torch.load("mobilenet_custom_v3.pth", map_location=device))
 model.to(device)
+optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
+
+# 4. Training Loop
+print("Starting Training...")
+for epoch in range(200): # Adjust epochs as needed
+    model.train()
+    for images, targets in train_loader:
+        images = [img.to(device) for img in images]
+        targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+        
+        loss_dict = model(images, targets)
+        losses = sum(loss for loss in loss_dict.values())
+        
+        optimizer.zero_grad()
+        losses.backward()
+        optimizer.step()
+    print(f"Epoch {epoch} Loss: {losses.item():.4f}")
+
+# model.load_state_dict(torch.load("mobilenet_custom_v3.pth", map_location=device))
+# model.to(device)
 
 # 5. Accuracy Report by Label Type
 print("\nCalculating Per-Label Accuracy (mAP)...")
@@ -130,5 +130,5 @@ for i, ap in enumerate(results['map_per_class']):
     print(f"Label '{cat_name}' (ID {cat_id}) Accuracy: {ap.item():.2%}")
 
 # 6. Save for Raspberry Pi
-torch.save(model.state_dict(), "mobilenet_custom_v3.pth")
-print("\nModel saved as mobilenet_custom_v3.pth")
+torch.save(model.state_dict(), "mobilenet_custom_v4.pth")
+print("\nModel saved as mobilenet_custom_v4.pth")

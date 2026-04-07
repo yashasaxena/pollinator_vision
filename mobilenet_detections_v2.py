@@ -66,7 +66,6 @@ with subprocess.Popen(vid_cmd, stdout=subprocess.PIPE) as vid_proc, \
 
             frame = np.frombuffer(raw, dtype=np.uint8).reshape((HEIGHT, WIDTH, 3))
             (h, w) = frame.shape[:2]
-
             blob = cv2.dnn.blobFromImage(
                 cv2.resize(frame, (300, 300)),
                 0.007843,

@@ -4,6 +4,19 @@ import numpy as np
 import cv2
 import os
 import signal
+import torch
+from torchvision.models.detection import fasterrcnn_mobilenet_v3_large_fpn
+
+device = torch.device("cpu")  # Pi = CPU
+
+model = fasterrcnn_mobilenet_v3_large_fpn(
+    weights=None,
+    num_classes=4  # background + 3 classes
+)
+
+model.load_state_dict(torch.load("mobilenet_custom_v9.pth", map_location=device))
+model.to(device)
+model.eval()
 
 WIDTH, HEIGHT = 640, 480
 

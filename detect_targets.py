@@ -1,9 +1,17 @@
+#!/usr/bin/env python3
 import subprocess
 import numpy as np
 import cv2
+import os
+import signal
 
 WIDTH, HEIGHT = 640, 480
 
+# ---------------- Kill leftovers (important) ----------------
+subprocess.run(["pkill", "-f", "rpicam-vid"], stderr=subprocess.DEVNULL)
+subprocess.run(["pkill", "-f", "ffmpeg"], stderr=subprocess.DEVNULL)
+
+# ---------------- Camera pipeline ----------------
 cmd = [
     "rpicam-vid",
     "--timeout", "0",
@@ -29,11 +37,26 @@ ffmpeg_cmd = [
 
 print("Starting camera...")
 
-with subprocess.Popen(cmd, stdout=subprocess.PIPE) as p1, \
-     subprocess.Popen(ffmpeg_cmd, stdin=p1.stdout, stdout=subprocess.PIPE) as p2:
+# 🔥 Start processes in their own groups
+p1 = subprocess.Popen(
+    cmd,
+    stdout=subprocess.PIPE,
+    preexec_fn=os.setsid
+)
 
-    frame_size = WIDTH * HEIGHT * 3
+p2 = subprocess.Popen(
+    ffmpeg_cmd,
+    stdin=p1.stdout,
+    stdout=subprocess.PIPE,
+    preexec_fn=os.setsid
+)
 
+p1.stdout.close()
+
+frame_size = WIDTH * HEIGHT * 3
+
+# ---------------- Main loop ----------------
+try:
     while True:
         raw = p2.stdout.read(frame_size)
         if not raw:
@@ -43,7 +66,29 @@ with subprocess.Popen(cmd, stdout=subprocess.PIPE) as p1, \
 
         cv2.imshow("Camera", frame)
 
+        # press q to quit cleanly
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-cv2.destroyAllWindows()
+except KeyboardInterrupt:
+    print("Stopping (Ctrl+C)...")
+
+# ---------------- CLEANUP (CRITICAL) ----------------
+finally:
+    print("Cleaning up camera processes...")
+
+    for p in (p2, p1):
+        try:
+            os.killpg(os.getpgid(p.pid), signal.SIGTERM)
+        except Exception:
+            pass
+
+    for p in (p2, p1):
+        try:
+            p.wait(timeout=1)
+        except Exception:
+            pass
+
+    cv2.destroyAllWindows()
+
+    print("Done.")

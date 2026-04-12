@@ -21,7 +21,7 @@ MODEL_PATH = "mobilenet_custom_v4.pth"
 
 BATCH_SIZE = 4
 SAVE_IMAGES = True
-CONF_THRESH = 0.3
+CONF_THRESH = 0.2
 
 os.makedirs("val_results", exist_ok=True)
 

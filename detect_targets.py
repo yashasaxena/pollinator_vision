@@ -102,8 +102,8 @@ try:
         labels = output["labels"].cpu().numpy()
 
         for i in range(len(scores)):
-            if scores[i] < CONF_THRESHOLD:
-                continue
+            # if scores[i] < CONF_THRESHOLD:
+            #     continue
 
             print(f"{CLASSES[labels[i]]}: {scores[i]:.2f}")
 

@@ -85,7 +85,7 @@ try:
 
         frame_count += 1
 
-        # Run model every 10th frame
+        # Only run every 10th frame
         if frame_count % 10 != 0:
             continue
 
@@ -98,23 +98,15 @@ try:
         with torch.no_grad():
             output = model([tensor])[0]
 
-        boxes = output["boxes"].cpu().numpy()
         scores = output["scores"].cpu().numpy()
         labels = output["labels"].cpu().numpy()
 
-        detected = False
-
-        for i in range(min(5, len(scores))):
+        for i in range(len(scores)):
             if scores[i] < CONF_THRESHOLD:
                 continue
 
-            detected = True
-            label_name = CLASSES[labels[i]]
+            print(f"{CLASSES[labels[i]]}: {scores[i]:.2f}")
 
-            print(f"{label_name}: {scores[i]:.2f}")
-
-        if detected:
-            print("----")
 
 except KeyboardInterrupt:
     print("Stopping (Ctrl+C)...")

@@ -6,6 +6,7 @@ import os
 import signal
 import torch
 from torchvision.models.detection import fasterrcnn_mobilenet_v3_large_fpn
+import torchvision.transforms.functional as F
 
 device = torch.device("cpu")  # Pi = CPU
 
@@ -19,6 +20,9 @@ model.to(device)
 model.eval()
 
 WIDTH, HEIGHT = 640, 480
+
+CLASSES = ["background", "Bulb", "Ring", "Waffle"]
+CONF_THRESHOLD = 0.5
 
 # ---------------- Kill leftovers (important) ----------------
 subprocess.run(["pkill", "-f", "rpicam-vid"], stderr=subprocess.DEVNULL)
@@ -69,6 +73,8 @@ p1.stdout.close()
 frame_size = WIDTH * HEIGHT * 3
 
 # ---------------- Main loop ----------------
+frame_count = 0
+
 try:
     while True:
         raw = p2.stdout.read(frame_size)
@@ -81,13 +87,9 @@ try:
 
         # ---------------- Run model every 10th frame ----------------
         if frame_count % 10 == 0:
-            # Resize for speed
             frame_small = cv2.resize(frame, (320, 320))
-
-            # BGR → RGB
             frame_rgb = cv2.cvtColor(frame_small, cv2.COLOR_BGR2RGB)
 
-            # To tensor
             tensor = F.to_tensor(frame_rgb).to(device)
 
             with torch.no_grad():
@@ -97,7 +99,6 @@ try:
             scores = output["scores"].cpu().numpy()
             labels = output["labels"].cpu().numpy()
 
-            # Draw detections
             for i in range(min(5, len(scores))):
                 if scores[i] < CONF_THRESHOLD:
                     continue
@@ -116,17 +117,14 @@ try:
                     2
                 )
 
-            # Show processed frame
-            cv2.imshow("Detection", frame_small)
+            cv2.imshow("Camera", frame_small)
 
         else:
-            # Show normal frame (no detection)
             cv2.imshow("Camera", frame)
 
-        # ---------------- Exit key ----------------
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-        
+
 except KeyboardInterrupt:
     print("Stopping (Ctrl+C)...")
 

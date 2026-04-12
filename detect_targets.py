@@ -5,7 +5,7 @@ import cv2
 WIDTH, HEIGHT = 640, 480
 
 cmd = [
-    "libcamera-vid",
+    "rpicam-vid",
     "--timeout", "0",
     "--width", str(WIDTH),
     "--height", str(HEIGHT),
@@ -26,6 +26,8 @@ ffmpeg_cmd = [
     "-pix_fmt", "bgr24",
     "-"
 ]
+
+print("Starting camera...")
 
 with subprocess.Popen(cmd, stdout=subprocess.PIPE) as p1, \
      subprocess.Popen(ffmpeg_cmd, stdin=p1.stdout, stdout=subprocess.PIPE) as p2:

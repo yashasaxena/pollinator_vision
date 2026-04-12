@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import subprocess
 import numpy as np
-import cv2
 import os
 import signal
 from ultralytics import YOLO
@@ -19,7 +18,7 @@ subprocess.run(["pkill", "-f", "ffmpeg"], stderr=subprocess.DEVNULL)
 # ---------------- Load YOLO ----------------
 model = YOLO(MODEL_PATH)
 
-# ---------------- Camera (LOW LATENCY SETTINGS) ----------------
+# ---------------- Camera (LOW LATENCY) ----------------
 cmd = [
     "rpicam-vid",
     "--timeout", "0",
@@ -29,7 +28,7 @@ cmd = [
     "--inline",
     "--codec", "h264",
     "--profile", "baseline",
-    "--flush",          # 🔥 critical for low latency
+    "--flush",      # 🔥 critical
     "--nopreview",
     "-o", "-"
 ]
@@ -48,7 +47,7 @@ ffmpeg_cmd = [
     "-"
 ]
 
-print("Starting camera (low latency mode)...")
+print("Starting camera (detection-only mode)...")
 
 p1 = subprocess.Popen(cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid)
 p2 = subprocess.Popen(ffmpeg_cmd, stdin=p1.stdout, stdout=subprocess.PIPE, preexec_fn=os.setsid)
@@ -69,37 +68,26 @@ try:
 
         frame_count += 1
 
-        # 🔥 Always show frame (smooth video)
-        display_frame = cv2.resize(frame, (320, 320))
+        # 🔥 Only run YOLO every 3 frames (tune this)
+        if frame_count % 3 != 0:
+            continue
 
-        # 🔥 Only run YOLO every 3 frames
-        if frame_count % 3 == 0:
-            results = model(display_frame, conf=0.3, imgsz=320, verbose=False)
+        # 🔥 Resize for speed
+        frame_small = frame[::2, ::2]  # faster than cv2.resize (~320x240)
 
-            # Draw detections
-            for r in results:
-                for box in r.boxes:
-                    cls = int(box.cls[0])
-                    conf = float(box.conf[0])
+        # Run YOLO
+        results = model(frame_small, conf=0.3, imgsz=320, verbose=False)
 
-                    x1, y1, x2, y2 = map(int, box.xyxy[0])
-                    label = CLASSES[cls]
+        # ---------------- Print detections ----------------
+        for r in results:
+            for box in r.boxes:
+                cls = int(box.cls[0])
+                conf = float(box.conf[0])
 
-                    cv2.rectangle(display_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    cv2.putText(
-                        display_frame,
-                        f"{label} {conf:.2f}",
-                        (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        (0, 255, 0),
-                        2
-                    )
+                print(f"{CLASSES[cls]}: {conf:.2f}")
 
-        cv2.imshow("YOLO Low-Latency Feed", display_frame)
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        if len(results) > 0:
+            print("----")
 
 except KeyboardInterrupt:
     print("Stopping (Ctrl+C)...")
@@ -120,5 +108,4 @@ finally:
         except:
             pass
 
-    cv2.destroyAllWindows()
     print("Done.")

@@ -52,7 +52,7 @@ def trigger_servo():
         servo_active = True
     try:
         print(f"  [servo] ON  {time.time():.3f}")
-        pwm.ChangeDutyCycle(angle_to_duty(90))
+        pwm.ChangeDutyCycle(angle_to_duty(180))
         time.sleep(SERVO_HOLD_SECONDS)
         pwm.ChangeDutyCycle(angle_to_duty(0))
         time.sleep(0.3)
